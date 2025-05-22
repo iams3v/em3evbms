@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContract
@@ -14,13 +15,24 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 
-private val requiredPermissions: Array<String> = arrayOf(
-    Manifest.permission.ACCESS_FINE_LOCATION,
-    Manifest.permission.BLUETOOTH_ADMIN,
-    Manifest.permission.BLUETOOTH)
-
 /** Ensure bluetooth is accessible */
 abstract class BluetoothRequiredActivity : AppCompatActivity() {
+    private val requiredPermissions: Array<String>
+        get() {
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                arrayOf(
+                    Manifest.permission.BLUETOOTH_SCAN,
+                    Manifest.permission.BLUETOOTH_CONNECT
+                )
+            } else {
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.BLUETOOTH_ADMIN,
+                    Manifest.permission.BLUETOOTH
+                )
+            }
+        }
+
     class EnableBluetoothContract : ActivityResultContract<Void, Boolean>() {
         override fun createIntent(context: Context, input: Void?): Intent {
             return Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
@@ -47,7 +59,8 @@ abstract class BluetoothRequiredActivity : AppCompatActivity() {
     /** Returns an accessible bluetooth device (or null if not yet accessible) */
     fun getBluetooth() : BluetoothAdapter? {
         // Make sure we have all required permissions
-        val missingPermissions = requiredPermissions.filter {
+        val currentRequiredPermissions = requiredPermissions // Call the getter
+        val missingPermissions = currentRequiredPermissions.filter {
             ContextCompat.checkSelfPermission(this,  it)  != PackageManager.PERMISSION_GRANTED
         }
         if (missingPermissions.isNotEmpty()) {
